@@ -16,6 +16,7 @@ import numpy as np
 import keras.models
 #for regular expressions, saves time dealing with string data
 import re
+import base64
 
 #system level operations (like loading files)
 import sys 
@@ -31,12 +32,15 @@ global model, graph
 #initialize these variables
 model, graph = init()
 
+classes = ['༠', '༡', '༢', '༣', '༤', '༥', '༦', '༧', '༨', '༩']
+
 #decoding an image from base64 into raw representation
-def convertImage(imgData1):
-	imgstr = re.search(r'base64,(.*)',imgData1).group(1)
-	#print(imgstr)
-	with open('output.png','wb') as output:
-		output.write(imgstr.decode('base64'))
+def convertImage(data_url):
+        content = str(data_url).split(';')[1]
+        image_encoded = content.split(',')[1]
+        body = base64.decodebytes(image_encoded.encode('utf-8')) 
+        with open('output.png','wb') as output:
+                output.write(body)
 	
 
 @app.route('/')
@@ -51,29 +55,26 @@ def predict():
 	#to input the user drawn character as an image into the model
 	#perform inference, and return the classification
 	#get the raw data format of the image
-	imgData = request.get_data()
+	data_url = request.get_data()
 	#encode it into a suitable format
-	convertImage(imgData)
-	print "debug"
+	convertImage(data_url)
 	#read the image into memory
 	x = imread('output.png',mode='L')
 	#compute a bit-wise inversion so black becomes white and vice versa
 	x = np.invert(x)
 	#make it the right size
-	x = imresize(x,(28,28))
+	x = imresize(x,(50,50))
 	#imshow(x)
 	#convert to a 4D tensor to feed into our model
-	x = x.reshape(1,28,28,1)
-	print "debug2"
+	x = x.reshape(1,50,50,1)
 	#in our computation graph
 	with graph.as_default():
 		#perform the prediction
 		out = model.predict(x)
 		print(out)
 		print(np.argmax(out,axis=1))
-		print "debug3"
 		#convert the response to a string
-		response = np.array_str(np.argmax(out,axis=1))
+		response = classes[np.argmax(out,axis=1)[0]]
 		return response	
 	
 
